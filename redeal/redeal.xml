@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Redeal</name>
+    <version>1.0</version>
+    <vqmver>2.x</vqmver>
+    <author>Redeal</author>
+
+    <file path="catalog/controller/common/footer.php">
+        <operation>
+            <search position="after"><![CDATA[$this->data['newsletter'] = $this->url->link('account/newsletter', '', 'SSL');]]></search>
+            <add><![CDATA[
+                $this->data['redeal_text_gtm_id'] = $this->config->get('redeal_text_gtm_id');
+                $this->data['redeal_route'] = $this->request->get['route'];
+                $this->data['referer'] = $this->request->get['referer'];
+                $this->data['campaignId'] = $this->request->get['campaignId'];
+                ]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/controller/checkout/success.php">
+        <operation>
+            <search position="replace"><![CDATA[unset($this->session->data['order_id']);]]></search>
+            <add><![CDATA[// unset($this->session->data['order_id']);]]></add>
+        </operation>
+        <operation>
+            <search position="replace"><![CDATA[unset($this->session->data['coupon']);]]></search>
+            <add><![CDATA[// unset($this->session->data['coupon']);]]></add>
+        </operation>
+        <operation>
+            <search position="before"><![CDATA[if (isset($this->session->data['order_id'])) {]]></search>
+            <add><![CDATA[
+            $this->load->model('checkout/order');
+            $order_data = $this->model_checkout_order->getOrder($this->session->data['order_id']);  
+            
+            $this->load->model('account/order');
+            $allproducts = $this->model_account_order->getOrderProducts($this->session->data['order_id']);
+                
+            $this->load->model('catalog/product');
+            $this->load->model('catalog/category');
+             
+            $redeal_products = [];
+            $p = [];
+            $redeal_price = [];
+            $redeal_tax = [];
+                
+                foreach ($allproducts as $product) {
+                
+                    $redeal_sku = $this->model_catalog_product->getProduct($product['product_id']);
+                
+                    $categories = $this->model_catalog_product->getCategories($product['product_id']);
+
+                    $category_name = "";
+                
+                    foreach($categories as $cat_name){
+                        $categories_info = $this->model_catalog_category->getCategory($cat_name['category_id']);
+                        $category_name .= $categories_info['name'].",";
+                    }
+                
+                    $category_name = rtrim($category_name, ',');
+                
+                    $p['sku'] = $redeal_sku['sku'];
+                    $p['price'] = round($product['total'],2);
+                    $p['category'] = $category_name;
+                    $p['quantity'] = $product['quantity'];
+                
+                    $redeal_products[] = $p;
+            
+                }
+                
+            require ('admin/model/sale/redealorderdetails.php');
+            $ModelRedealOrder = new ModelRedealOrder($this->registry);
+            $orderDetails = $ModelRedealOrder->getOrderTotals($this->session->data['order_id']);
+            //echo '<pre>'; print_r($orderDetails);exit;
+                
+                foreach($orderDetails as $orderdetail) {
+                    if($orderdetail['code'] == 'shipping'){ 
+                        $shipping_value = round($orderdetail['value'],2);
+                    }
+                    if($orderdetail['code'] == 'coupon'){ 
+                        $coupon_value = $orderdetail['value'];
+                        $coupon_trim_value = round(ltrim($coupon_value,"-"),2);
+                    }
+                    if($orderdetail['code'] == 'sub_total'){ 
+                        $subtotal_value = round($orderdetail['value'],2);
+                    }
+                    if($orderdetail['code'] == 'tax'){ 
+                        $tax_value = round($orderdetail['value'],2);
+                    }
+                    if($orderdetail['code'] == 'total'){ 
+                        $total_value = round($orderdetail['value'],2);
+                    }
+                }
+                
+            $revenue = round( (($subtotal_value + $shipping_value) - $coupon_trim_value) ,2);
+            $coupon_code = $this->session->data['coupon'];
+            if($revenue == null){
+                $revenue = 0;
+            }
+            if($coupon_code == null){
+                $coupon_code = '';
+            }
+            if($total_value == null){
+                $total_value = 0;
+            }
+            if($tax_value == null){
+                $tax_value = 0;
+            }
+            if($subtotal_value == null){
+                $subtotal_value = 0;
+            }   
+            if($coupon_trim_value == null){
+                $coupon_trim_value = 0;
+            }   
+            if($shipping_value == null){
+                $shipping_value = 0;
+            }    
+                
+            $redeal_data = array('id' => $order_data['order_id'], 'total'=> $total_value, 'price'=>$subtotal_value,'discount'=>$coupon_trim_value,'revenue'=> $revenue, 'tax'=>$tax_value, 'shipping'=>$shipping_value, 'currency'=>$order_data['currency_code'], 'country'=>$order_data['payment_country'], 'language'=>$order_data['language_filename'], 'name'=>$order_data['firstname']." ".$order_data['lastname'], 'email'=>$order_data['email'], 'phone'=>$order_data['telephone'], 'coupons'=> $coupon_code, 'products'=>$redeal_products);
+            
+            $this->session->data['redeal_data_array'] = json_encode($redeal_data);
+                
+            ]]></add>
+        </operation>
+        <operation>
+            <search position="replace"><![CDATA[// unset($this->session->data['order_id']);]]></search>
+            <add><![CDATA[unset($this->session->data['order_id']);]]></add>
+        </operation>
+        <operation>
+            <search position="replace"><![CDATA[// unset($this->session->data['coupon']);]]></search>
+            <add><![CDATA[unset($this->session->data['coupon']);]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/view/theme/default/template/common/footer.tpl">
+        <operation>
+            <search position="after"><![CDATA[<div id="footer">]]></search>
+            <add><![CDATA[
+            <?php if($redeal_route == 'checkout/success' || ($referer == 'Redeal' && $campaignId != '')){ ?>
+                <!-- Google Tag Manager (noscript) -->
+                <noscript>
+                  <iframe src="https=>//www.googletagmanager.com/ns.html?id={<?php echo $redeal_text_gtm_id; ?>|escape:'htmlall':'utf-8'}" height="0" width="0" style="display:none;visibility:hidden">
+                  </iframe>
+                </noscript>
+                <!-- End Google Tag Manager (noscript) -->
+
+                <!-- Google Tag Manager -->
+                <script type="text/javascript">
+                    (function(w, d, s, l, i) {
+                        w[l] = w[l] || [];
+                        w[l].push({
+                            'gtm.start': new Date().getTime(),
+                            event: 'gtm.js'
+                        });
+                        var f = d.getElementsByTagName(s)[0],
+                            j = d.createElement(s),
+                            dl = l != 'dataLayer' ? '&l=' + l : '';
+                        j.async = true;
+                        j.src =
+                            'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+                        f.parentNode.insertBefore(j, f);
+                    })(window, document, 'script', 'dataLayer', '<?php echo $redeal_text_gtm_id; ?>');
+                </script>
+                <!-- End Google Tag Manager -->
+
+                <script>
+                    (function(i, s, o, g, r, a, m) {
+                        i['RedealObject'] = r;
+                        i[r] = i[r] || function() {
+                            (i[r].q = i[r].q || []).push(arguments)
+                        }, i[r].l = 1 * new Date();
+                        a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+                        a.async = 1;
+                        a.src = g;
+                        m.parentNode.insertBefore(a, m)
+                    })(window, document, 'script', window.location.protocol + '//widget.redeal.se/js/redeal.js', 'redeal'); 
+                
+                        var redeal_data = <?php echo $this->session->data['redeal_data_array']; ?>;
+                        redeal_data.event = "orders";
+                        window.dataLayer = window.dataLayer || [];
+                        dataLayer.push(redeal_data);
+                        redeal('checkout', <?php echo $this->session->data['redeal_data_array']; ?>);
+                </script>
+            <?php } ?>
+        ]]>
+            </add>
+        </operation>
+    </file>
+
+</modification>
+ 
