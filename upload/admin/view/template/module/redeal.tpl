@@ -20,10 +20,10 @@
                         <td>Enable</td>
                         <td><input type="checkbox" name="redeal_enable_disable_field" value="Yes" <?php if($redeal_enable_disable_field == 'Yes') { ?> checked="checked" <?php } ?> /></td>
                     </tr>
-                    <tr>
+                    <!--<tr>
                         <td>GTM ID</td>
-                        <td><input type="text" name="redeal_text_gtm_id" value="<?php echo $redeal_text_gtm_id; ?>" /></td>
-                    </tr>
+                        <td><input type="text" name="redeal_text_gtm_id" value="<?php //echo $redeal_text_gtm_id; ?>" /></td>
+                    </tr>-->
                 </table>
             </form>
         </div>

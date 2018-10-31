@@ -22,7 +22,7 @@ class ControllerModuleRedeal extends Controller {
         /* Assign the language data for parsing it to view */
         $this->data['heading_title'] = $this->language->get('heading_title');
 
-        $this->data['text_gtm_id'] = $this->language->get('text_gtm_id');
+        //$this->data['text_gtm_id'] = $this->language->get('text_gtm_id');
 
         $this->data['button_save'] = $this->language->get('button_save');
         $this->data['button_cancel'] = $this->language->get('button_cancel');
@@ -82,11 +82,11 @@ class ControllerModuleRedeal extends Controller {
             echo $this->data['redeal_enable_disable_field'] = $this->config->get('redeal_enable_disable_field');
         }
 
-        if (isset($this->request->post['redeal_text_gtm_id'])) {
+       /* if (isset($this->request->post['redeal_text_gtm_id'])) {
             $this->data['redeal_text_gtm_id'] = $this->request->post['redeal_text_gtm_id'];
         } else {
             $this->data['redeal_text_gtm_id'] = $this->config->get('redeal_text_gtm_id');
-        }
+        }*/
 
         /* End Block */
 
